@@ -1,0 +1,292 @@
+<html>
+<head>
+<title>Add Finance</title>
+<link rel="stylesheet" href="css/style.css" type="text/css" >
+</head>
+<body>
+<div class="wrapper">
+	<div class="errorLogDiv" style="display:none">
+		<h2>LOG</h2>
+		<div class="errDiv"></div>
+	</div>
+	<button class="addButton">Add People</button>
+	<button class="viewButton">View People</button>
+	<div class="addWrapper wrapperDiv" style="display:none">
+		<h1>Add People</h1>
+		<label for="finName">Name : </label>
+		<input id="finName" type="text" placeholder="Enter Name"><br/>
+		<label for="finDetail">Details : </label>
+		<textarea placeholder="Enter Detail" id="finDetail"></textarea><br/>
+		<button class="addSubmit">Submit</button>
+	</div>
+	<div class="viewWrapper wrapperDiv">
+		<h1>View People</h1>
+		<table class="viewTable" border="1">
+			<tr>
+				<th> S.No </th>
+				<th> ID </th>
+				<th> Name </th>
+				<th> Detail </th>
+				<th> Created Date </th>
+				<th> updated Date </th>
+				<th> Account </th>
+				<th> Edit </th>
+				<th> Delete </th>
+			</tr>			
+		</table>
+		<!--<button class="viewSubmit">Submit</button>-->
+	</div>
+	<div class="addAccWrapper wrapperDiv" style="display:none">
+		<h1>Add Account</h1>
+		<h2>ID = <span class="accDetailSpan accDetailId"></span> || Name = <span class="accDetailSpan accDetailName"></span> </h2>
+		<h2>Balance = <span class="accDetailSpan accDetailBal"></span> || Income = <span class="accDetailSpan accDetailInc"></span> </h2>
+		<label for="finAmt">Amount : </label>
+		<input id="finAmt" type="text" placeholder="Enter Amount"><br/>
+		<label for="finBal">Balance : </label>
+		<input id="finBal" readonly type="text" placeholder="Enter Amount"><br/>
+		<button class="addAccSubmit">Submit</button>
+		<button class="addAccClose">Cancel</button>
+	</div>
+	<div class="viewMoneyWrapper wrapperDiv">
+		<h1>View Account</h1>
+		<h2>ID = <span class="accDetailSpan accDetailId"></span> || Name = <span class="accDetailSpan accDetailName"></span> </h2>
+		<h3>Click to add to Account : <button class="addAccView">Add</button></h3>
+		<table class="viewAccTable" border="1">
+			<tr>
+				<th> S.No </th>
+				<th> Date </th>
+				<th> Income </th>
+				<th> Balance </th>
+			</tr>			
+		</table>
+		<!--<button class="viewSubmit">Submit</button>-->
+	</div>
+	<div class="updateWrapper wrapperDiv" style="display:none">
+		<h1>Update People</h1>
+		<label for="finUpdateName">Name : </label>
+		<input id="finUpdateName" type="text" placeholder="Enter Name"><br/>
+		<label for="finUpdateDetail">Details : </label>
+		<textarea placeholder="Enter Detail" id="finUpdateDetail"></textarea><br/>
+		<button class="updateSubmit">Submit</button>
+	</div>
+</div>
+<script src="js/jquery-1.7.2.min.js"></script>
+<script>
+	var updateJson ,updateAccJson;
+	$(function(){
+		$(".addButton").click(function(){
+			$(".wrapperDiv").hide();
+			$(".addWrapper").show();
+		});
+		$(".addSubmit").click(function(){
+			var obj = {
+				"name": $("#finName").val(),
+				"detail": $("#finDetail").val()
+			};
+			addCall("php/add.php", obj, 
+			function(data){
+				$(".errDiv").html(data);
+				$(".viewButton").trigger("click");
+			},
+			function(data){
+				$(".errDiv").html("");
+				alert(data);
+			});
+		});	
+		$(".viewButton").click(function(){
+			$(".wrapperDiv").hide();
+			$(".viewWrapper").show();
+			viewCall("php/view.php", "", function(result){
+				viewAsTable(result);
+			},
+			function(data){
+				$(".errDiv").html("");
+				alert(data);
+			});
+		});
+		$(".viewButton").trigger("click");
+		$(".viewWrapper").on("click", ".editView", function(){
+			updateJson = JSON.parse( $(this).parents("tr").attr("data-json") );
+			$("#finUpdateName").val(updateJson.name);
+			$("#finUpdateDetail").val(updateJson.detail);
+			$(".wrapperDiv").hide();
+			$(".updateWrapper").show();
+		});
+		$(".viewWrapper").on("click", ".accountView", function(){
+			updateJson = JSON.parse( $(this).parents("tr").attr("data-json") );
+			updateAccountView();
+		});
+		$(".addAccView").click(function(){
+			$(".accDetailBal").text(updateAccJson.balance);
+			$(".accDetailInc").text(updateAccJson.income);
+			$("#finBal").val(updateAccJson.balance);
+			if( updateAccJson.balance === 0 ){
+				$("#finBal").removeAttr("readonly");
+			}
+			else{
+				$("#finBal").attr("readonly", true);
+			}
+			$(".wrapperDiv").hide();
+			$(".addAccWrapper").show();
+		});
+		$(".addAccClose").click(function(){
+			$(".wrapperDiv").hide();
+			$(".viewMoneyWrapper").show();
+		});
+		$(".addAccSubmit").click(function(){
+			var accIncome = parseInt( $("#finAmt").val() ) || 0;
+			var accBalance = parseInt( $("#finBal").val() );
+			accBalance = accBalance - accIncome;
+			var obj = {
+				"userId": updateJson.id,
+				"income": accIncome,
+				"balance": accBalance
+			};
+			addCall("php/addAcc.php", obj, 
+			function(data){
+				updateAccountView();
+				$(".errDiv").html(data);
+			},
+			function(data){
+				$(".errDiv").html("");
+				alert(data);
+			});
+		});	
+		$(".viewWrapper").on("click", ".deleteView", function(){
+			updateJson = JSON.parse( $(this).parents("tr").attr("data-json") );
+			var obj = {
+				"id": updateJson.id
+			};
+			updateCall("php/trash.php", obj, 
+			function(data){
+				$(".errDiv").html(data);
+				$(".viewButton").trigger("click");
+			},
+			function(data){
+				$(".errDiv").html("");
+				alert(data);
+			});
+		});
+		$(".updateSubmit").click(function(){
+			var obj = {
+				"id": updateJson.id,
+				"name": $("#finUpdateName").val(),
+				"detail": $("#finUpdateDetail").val()
+			};
+			updateCall("php/update.php", obj, 
+			function(data){
+				$(".errDiv").html(data);
+			},
+			function(data){
+				$(".errDiv").html("");
+				alert(data);
+			});
+		});
+		
+		function updateAccountView(){
+			$(".accDetailName").text(updateJson.name);
+			$(".accDetailId").text("Fin_"+updateJson.id);
+			$(".wrapperDiv").hide();
+			$(".viewMoneyWrapper").show();
+			var obj = {
+				"userId": updateJson.id
+			};
+			viewCall("php/viewAcc.php", obj, 
+			function(result){
+				viewAccAsTable(result);
+			},
+			function(data){
+				$(".errDiv").html("");
+				alert(data);
+			});
+		}
+		function viewAsTable(result){
+			$(".errDiv").html(result);
+			var i, 
+				data = JSON.parse(result),
+				tempHtml = "";
+			for( i = 0; i < data.length; i++ ){
+				tempHtml += "<tr data-json='"+ JSON.stringify(data[i]) +"'>"+
+						"<td>"+(i+1)+"</td>"+
+						"<td>Fin_"+data[i].id+"</td>"+
+						"<td>"+data[i].name+"</td>"+
+						"<td>"+data[i].detail+"</td>"+
+						"<td>"+data[i].date+"</td>"+
+						"<td>"+data[i].modifiedDate+"</td>"+
+						"<td><button class='accountView'>Account</button></td>"+
+						"<td><button class='editView'>Edit</button></td>"+
+						"<td><button class='deleteView'>Delete</button></td>"+
+					"</tr>";
+			}
+			$(".viewTable").find("tr").not(":first").remove();
+			$(".viewTable").append(tempHtml);
+		}
+		function viewAccAsTable(result){
+			$(".errDiv").html(result);
+			var i, 
+				data = JSON.parse(result),
+				tempHtml = "";
+			for( i = 0; i < data.length; i++ ){
+				tempHtml += "<tr data-json='"+ JSON.stringify(data[i]) +"'>"+
+						"<td>"+(i+1)+"</td>"+
+						"<td>"+data[i].date+"</td>"+
+						"<td>"+data[i].income+"</td>"+
+						"<td>"+data[i].balance+"</td>"+
+						//"<td><button class='editAccView'>Edit</button></td>"+
+						//"<td><button class='deleteAccView'>Delete</button></td>"+
+					"</tr>";
+			}
+			$(".viewAccTable").find("tr").not(":first").remove();
+			$(".viewAccTable").append(tempHtml);			
+			updateAccJson = data.length ? data[data.length-1] : {"balance": 0, "income": 0};
+		}
+		function addCall(url, obj, callbackPass, callbackFail){
+			$.ajax({
+				type:"POST",
+				url:url,
+				data: obj,
+				success:function(data){
+					console.log(data);
+					callbackPass(data);
+				},
+				fail:function(data){
+					console.log(data);
+					callbackFail(data);
+				}
+			});
+		}
+		function viewCall(url, obj, callbackPass, callbackFail){
+			$.ajax({
+				type:"GET",
+				url:url,
+				data: obj,
+				success:function(data){
+					console.log(data);
+					callbackPass(data);
+				},
+				fail:function(data){
+					console.log(data);
+					callbackFail(data);
+				}
+			});		
+		}
+		function updateCall(url, obj, callbackPass, callbackFail){
+			console.log(obj);
+			$.ajax({
+				type:"POST",
+				url:url,
+				data: obj,
+				success:function(data){
+					console.log(data);
+					callbackPass(data);
+				},
+				fail:function(data){
+					console.log(data);
+					callbackFail(data);
+				}
+			});
+		}
+	});
+</script>
+</body>
+</html>
